@@ -125,15 +125,15 @@ module Generator = struct
     let rec cut ?(initial_ofs = 0) l =
       let c, ofs, len = Queue.take g.buffers in
       if len - initial_ofs < l then (
-        Queue.push (c, ofs, len) g.buffers ;
+        Queue.push (c, ofs, len) g.buffers;
         cut (l - len + initial_ofs) )
       else (
         Queue.push (c, ofs, l) g.buffers;
         remove (remove_len - (len - l)) )
     in
     let new_len = g.length - remove_len in
-    assert (remove_len > 0 && new_len >= 0) ;
-    cut ~initial_ofs:g.offset new_len ;
+    assert (remove_len > 0 && new_len >= 0);
+    cut ~initial_ofs:g.offset new_len;
     g.length <- new_len
 
   (** Feed an item into a generator.

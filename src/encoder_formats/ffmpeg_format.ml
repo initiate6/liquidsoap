@@ -22,18 +22,18 @@
 
 type opt_val = [ `String of string | `Int of int | `Float of float ]
 
-type output = [`Stream | `Url of string]
+type output = [ `Stream | `Url of string ]
 
 type opts = (string, opt_val) Hashtbl.t
 
 type t = {
-  format: string option;
-  output: output;
-  audio_codec: string option;
-  channels: int;
-  samplerate: int Lazy.t;
-  video_codec: string option;
-  options: opts;
+  format : string option;
+  output : output;
+  audio_codec : string option;
+  channels : int;
+  samplerate : int Lazy.t;
+  video_codec : string option;
+  options : opts;
 }
 
 let string_of_options options =
@@ -56,26 +56,20 @@ let to_string m =
   let opts = string_of_options m.options in
   let audio_codec =
     match m.audio_codec with
-      | None ->
-          ""
-      | Some c ->
-          Printf.sprintf ",audio_codec=%S" c
+      | None -> ""
+      | Some c -> Printf.sprintf ",audio_codec=%S" c
   in
   let video_codec =
     match m.video_codec with
-      | None ->
-          ""
-      | Some c ->
-          Printf.sprintf ",video_codec=%S" c
+      | None -> ""
+      | Some c -> Printf.sprintf ",video_codec=%S" c
   in
   let output =
     match m.output with
-      | `Stream ->
-          ""
-      | `Url path ->
-          Printf.sprintf ",url=%S" path
+      | `Stream -> ""
+      | `Url path -> Printf.sprintf ",url=%S" path
   in
-  Printf.sprintf "%%fmpeg(%s%s,ac=%d,ar=%d%s%s%s)" format audio_codec
-    m.channels (Lazy.force m.samplerate) video_codec
+  Printf.sprintf "%%fmpeg(%s%s,ac=%d,ar=%d%s%s%s)" format audio_codec m.channels
+    (Lazy.force m.samplerate) video_codec
     (if opts = "" then "" else Printf.sprintf ",%s" opts)
     output

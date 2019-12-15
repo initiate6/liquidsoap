@@ -60,10 +60,8 @@ class virtual base ~kind ~source ~name p =
       let enc = self#encoder_factory self#id in
       let meta =
         match current_metadata with
-          | Some m ->
-              m
-          | None ->
-              Meta_format.empty_metadata
+          | Some m -> m
+          | None -> Meta_format.empty_metadata
       in
       encoder <- Some (enc meta)
 
@@ -90,9 +88,11 @@ class virtual base ~kind ~source ~name p =
 (** url output: discard encoded data. *)
 let url_proto kind =
   Output.proto
-  @ [ ("url", Lang.string_t, None, Some "Url to output to.");
+  @ [
+      ("url", Lang.string_t, None, Some "Url to output to.");
       ("", Lang.format_t kind, None, Some "Encoding format.");
-      ("", Lang.source_t kind, None, None) ]
+      ("", Lang.source_t kind, None, None);
+    ]
 
 class url_output p =
   let url = Lang.to_string (List.assoc "url" p) in
@@ -194,7 +194,8 @@ class virtual piped_output ~kind p =
     method output_stop =
       if self#is_open then (
         let flush = (Utils.get_some encoder).Encoder.stop () in
-        self#send flush ; self#close_pipe ) ;
+        self#send flush;
+        self#close_pipe );
       super#output_stop
 
     val m = Mutex.create ()
@@ -212,8 +213,8 @@ class virtual piped_output ~kind p =
         ()
 
     method send b =
-      if not self#is_open then self#prepare_pipe ;
-      super#send b ;
+      if not self#is_open then self#prepare_pipe;
+      super#send b;
       if not reopening then
         if
           need_reset
@@ -307,15 +308,15 @@ class file_output ~format_val ~kind p =
         :: (if append then [Open_append] else [Open_trunc])
       in
       let filename = self#filename in
-      Utils.mkdir ~perm:dir_perm (Filename.dirname filename) ;
+      Utils.mkdir ~perm:dir_perm (Filename.dirname filename);
       let fd = open_out_gen mode perm filename in
       current_filename <- Some filename;
       set_binary_mode_out fd true;
       fd
 
     method close_chan fd =
-      close_out fd ;
-      self#on_close (Utils.get_some current_filename) ;
+      close_out fd;
+      self#on_close (Utils.get_some current_filename);
       current_filename <- None
   end
 

@@ -38,11 +38,11 @@ type video_stream =
   * (Swscale.BigArray.t, Swscale.Frame.t) Swscale.ctx
 
 type handler = {
-  output: Avutil.output Avutil.container;
-  audio_stream: audio_stream option;
-  channels: int;
-  video_stream: video_stream option;
-  vchans: int;
+  output : Avutil.output Avutil.container;
+  audio_stream : audio_stream option;
+  channels : int;
+  video_stream : video_stream option;
+  vchans : int;
 }
 
 (* Convert ffmpeg-specific options. *)
@@ -61,10 +61,8 @@ let convert_options opts =
 
 let mk_format ffmpeg =
   match ffmpeg.Ffmpeg_format.format with
-    | Some short_name ->
-        Av.Format.guess_output_format ~short_name ()
-    | None ->
-        None
+    | Some short_name -> Av.Format.guess_output_format ~short_name ()
+    | None -> None
 
 let mk_encoder ~ffmpeg ~options output =
   let audio_codec =
@@ -76,7 +74,7 @@ let mk_encoder ~ffmpeg ~options output =
   let src_freq = Frame.audio_of_seconds 1. in
   let channels = ffmpeg.Ffmpeg_format.channels in
   if channels > 0 && audio_codec = None then
-    failwith "Audio codec required when channels > 0" ;
+    failwith "Audio codec required when channels > 0";
   let vchans = if video_codec = None then 0 else 1 in
   let dst_freq = Lazy.force ffmpeg.Ffmpeg_format.samplerate in
   let channels_layout =
@@ -96,7 +94,7 @@ let mk_encoder ~ffmpeg ~options output =
             ~sample_rate:(Lazy.force ffmpeg.Ffmpeg_format.samplerate)
             ()
         in
-        Hashtbl.iter (Hashtbl.add opts) options ;
+        Hashtbl.iter (Hashtbl.add opts) options;
         let out_sample_format =
           Avcodec.Audio.find_best_sample_format audio_codec `Dbl
         in
@@ -107,7 +105,7 @@ let mk_encoder ~ffmpeg ~options output =
         let stream = Av.new_audio_stream ~opts ~codec:audio_codec output in
         Hashtbl.filter_map_inplace
           (fun l v -> if Hashtbl.mem opts l then Some v else None)
-          options ;
+          options;
         (stream, resampler))
       audio_codec
   in
@@ -123,7 +121,7 @@ let mk_encoder ~ffmpeg ~options output =
             ~size:(video_width, video_height)
             ()
         in
-        Hashtbl.iter (Hashtbl.add opts) options ;
+        Hashtbl.iter (Hashtbl.add opts) options;
         let scaler =
           Scaler.create [] video_width video_height `Yuv420p video_width
             video_height pixel_format
@@ -131,16 +129,16 @@ let mk_encoder ~ffmpeg ~options output =
         let stream = Av.new_video_stream ~opts ~codec:video_codec output in
         Hashtbl.filter_map_inplace
           (fun l v -> if Hashtbl.mem opts l then Some v else None)
-          options ;
+          options;
         (stream, scaler))
       video_codec
   in
-  {output; audio_stream; channels; video_stream; vchans}
+  { output; audio_stream; channels; video_stream; vchans }
 
 let encode ~encoder frame start len =
   let content =
     Frame.content_of_type frame start
-      {Frame.audio= encoder.channels; video= encoder.vchans; midi= 0}
+      { Frame.audio = encoder.channels; video = encoder.vchans; midi = 0 }
   in
   ignore
     (Utils.maybe
@@ -148,7 +146,7 @@ let encode ~encoder frame start len =
          let pcm = content.Frame.audio in
          let aframe = Resampler.convert converter pcm in
          Av.write_frame stream aframe)
-       encoder.audio_stream) ;
+       encoder.audio_stream);
   ignore
     (Utils.maybe
        (fun (stream, scaler) ->
@@ -161,7 +159,7 @@ let encode ~encoder frame start len =
            let y, u, v = Image.YUV420.data f in
            let sy = Image.YUV420.y_stride f in
            let s = Image.YUV420.uv_stride f in
-           let vdata = [|(y, sy); (u, s); (v, s)|] in
+           let vdata = [| (y, sy); (u, s); (v, s) |] in
            let vframe = Scaler.convert scaler vdata in
            Av.write_frame stream vframe
          done)
@@ -172,18 +170,15 @@ let insert_metadata ~encoder m =
     Hashtbl.fold (fun lbl v l -> (lbl, v) :: l) (Meta_format.to_metadata m) []
   in
   match (encoder.audio_stream, encoder.video_stream) with
-    | Some (s, _), _ ->
-        Av.set_metadata s m
-    | None, Some (s, _) ->
-        Av.set_metadata s m
-    | _ ->
-        ()
+    | Some (s, _), _ -> Av.set_metadata s m
+    | None, Some (s, _) -> Av.set_metadata s m
+    | _ -> ()
 
 let encoder ffmpeg meta =
   let buf = Strings.Mutable.empty () in
   let make () =
     let options = Hashtbl.copy ffmpeg.Ffmpeg_format.options in
-    convert_options options ;
+    convert_options options;
     let write str ofs len =
       Strings.Mutable.add_subbytes buf str ofs len;
       len
@@ -192,31 +187,33 @@ let encoder ffmpeg meta =
     let output =
       match ffmpeg.Ffmpeg_format.output with
         | `Stream ->
-            if format = None then failwith "format is required!" ;
+            if format = None then failwith "format is required!";
             Av.open_output_stream ~opts:options write (Utils.get_some format)
-        | `Url url ->
-            Av.open_output ?format ~opts:options url
+        | `Url url -> Av.open_output ?format ~opts:options url
     in
     let ret = mk_encoder ~ffmpeg ~options output in
     if Hashtbl.length options > 0 then
       failwith
         (Printf.sprintf "Unrecognized options: %s"
-           (Ffmpeg_format.string_of_options options)) ;
+           (Ffmpeg_format.string_of_options options));
     ret
   in
   let encoder = ref (make ()) in
   let encode frame start len =
-    encode ~encoder:!encoder frame start len ;
+    encode ~encoder:!encoder frame start len;
     Strings.Mutable.flush buf
   in
   let insert_metadata m =
-    Av.close !encoder.output ;
-    encoder := make () ;
+    Av.close !encoder.output;
+    encoder := make ();
     insert_metadata ~encoder:!encoder m
   in
-  insert_metadata meta ;
-  let stop () = Av.close !encoder.output ; Strings.Mutable.flush buf in
-  {Encoder.insert_metadata; header= Strings.empty; encode; stop}
+  insert_metadata meta;
+  let stop () =
+    Av.close !encoder.output;
+    Strings.Mutable.flush buf
+  in
+  { Encoder.insert_metadata; header = Strings.empty; encode; stop }
 
 let () =
   Encoder.plug#register "FFMPEG" (function

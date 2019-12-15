@@ -52,13 +52,11 @@ let kind_of_format = function
   | Ffmpeg m ->
       let channels =
         match m.Ffmpeg_format.audio_codec with
-          | None ->
-              0
-          | Some _ ->
-              m.Ffmpeg_format.channels
+          | None -> 0
+          | Some _ -> m.Ffmpeg_format.channels
       in
       let video = if m.Ffmpeg_format.video_codec <> None then 1 else 0 in
-      {Frame.audio= channels; video; midi= 0}
+      { Frame.audio = channels; video; midi = 0 }
   | FdkAacEnc m ->
       {
         Frame.audio = m.Fdkaac_format.channels;
@@ -167,20 +165,16 @@ let file_output = function Ffmpeg _ -> true | _ -> false
 
 let with_file_output encoder file =
   match encoder with
-    | Ffmpeg opts ->
-        Ffmpeg {opts with Ffmpeg_format.output= `Url file}
-    | _ ->
-        failwith "No file output!"
+    | Ffmpeg opts -> Ffmpeg { opts with Ffmpeg_format.output = `Url file }
+    | _ -> failwith "No file output!"
 
 (** Encoders that can output to a arbitrary url. *)
 let url_output = function Ffmpeg _ -> true | _ -> false
 
 let with_url_output encoder file =
   match encoder with
-    | Ffmpeg opts ->
-        Ffmpeg {opts with Ffmpeg_format.output= `Url file}
-    | _ ->
-        failwith "No file output!"
+    | Ffmpeg opts -> Ffmpeg { opts with Ffmpeg_format.output = `Url file }
+    | _ -> failwith "No file output!"
 
 (** An encoder, once initialized, is something that consumes
   * frames, insert metadata and that you eventually close 

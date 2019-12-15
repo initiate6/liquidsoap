@@ -46,21 +46,20 @@ class input ~bufferize ~kind ~start ~on_start ~on_stop url =
 
     method private close_container =
       match container with
-        | None ->
-            ()
+        | None -> ()
         | Some input ->
-            FFmpeg.Av.close input ;
+            FFmpeg.Av.close input;
             container <- None
 
     method private get_decoder =
-      self#close_container ;
+      self#close_container;
       let input = FFmpeg.Av.open_input url in
       let content_type = Ffmpeg_decoder.get_type ~url input in
       if not (Frame.type_has_kind content_type kind) then
         failwith
           (Printf.sprintf "url %S cannot product content of type %s" url
-             (Frame.string_of_content_type content_type)) ;
-      container <- Some input ;
+             (Frame.string_of_content_type content_type));
+      container <- Some input;
       let audio =
         try
           Some
@@ -84,19 +83,23 @@ class input ~bufferize ~kind ~start ~on_start ~on_stop url =
 
     method private start =
       begin
-        match wait_feeding with None -> () | Some f ->
-            f () ;
+        match wait_feeding with
+        | None -> ()
+        | Some f ->
+            f ();
             wait_feeding <- None
-      end ;
+      end;
       let kill, wait = Tutils.stoppable_thread self#feed "UDP input" in
-      kill_feeding <- Some kill ;
+      kill_feeding <- Some kill;
       wait_feeding <- Some wait
 
     method private stop =
-      (Utils.get_some kill_feeding) () ;
+      (Utils.get_some kill_feeding) ();
       kill_feeding <- None
 
-    method private output_reset = self#stop ; self#start
+    method private output_reset =
+      self#stop;
+      self#start
 
     method private is_active = true
 
@@ -106,17 +109,17 @@ class input ~bufferize ~kind ~start ~on_start ~on_stop url =
       try
         let decoder = self#get_decoder in
         while true do
-          if should_stop () then failwith "stop" ;
+          if should_stop () then failwith "stop";
           decoder generator
         done
       with e ->
-        Generator.add_break ~sync:`Drop generator ;
-        self#close_container ;
+        Generator.add_break ~sync:`Drop generator;
+        self#close_container;
         begin
-          match e with Failure s -> (self#log)#severe "Feeding stopped: %s." s
-          | e ->
-              (self#log)#severe "Feeding stopped: %s." (Printexc.to_string e)
-        end ;
+          match e with
+          | Failure s -> self#log#severe "Feeding stopped: %s." s
+          | e -> self#log#severe "Feeding stopped: %s." (Printexc.to_string e)
+        end;
         if should_stop () then has_stopped ()
         else self#feed (should_stop, has_stopped)
   end
@@ -126,11 +129,13 @@ let () =
   Lang.add_operator "input.ffmpeg" ~active:true
     ~descr:"Decode a url using ffmpeg." ~category:Lang.Input
     ( Start_stop.input_proto
-    @ [ ( "buffer",
+    @ [
+        ( "buffer",
           Lang.float_t,
           Some (Lang.float 1.),
           Some "Duration of buffered data before starting playout." );
-        ("", Lang.string_t, None, Some "URL to decode.") ] )
+        ("", Lang.string_t, None, Some "URL to decode.");
+      ] )
     ~kind:(Lang.Unconstrained k)
     (fun p kind ->
       let start = Lang.to_bool (List.assoc "start" p) in
@@ -144,5 +149,4 @@ let () =
       in
       let bufferize = Lang.to_float (List.assoc "buffer" p) in
       let url = Lang.to_string (Lang.assoc "" 1 p) in
-      ( new input ~kind ~start ~on_start ~on_stop ~bufferize url
-        :> Source.source ))
+      (new input ~kind ~start ~on_start ~on_stop ~bufferize url :> Source.source))

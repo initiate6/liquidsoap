@@ -65,9 +65,9 @@ let mk_audio_decoder ~put_audio container =
         FFmpeg.Avutil.Audio.frame_get_sample_format frame
       in
       if !in_sample_format <> frame_in_sample_format then (
-        log#important "Sample format change detected!" ;
-        in_sample_format := frame_in_sample_format ;
-        converter := mk_converter () ) ;
+        log#important "Sample format change detected!";
+        in_sample_format := frame_in_sample_format;
+        converter := mk_converter () );
       let content = Converter.convert !converter frame in
       put_audio gen content 0 (Audio.length content) )
 
@@ -89,35 +89,33 @@ let mk_video_decoder ~put_video container =
   let buffer =
     match
       List.find_opt
-        (fun {FFmpeg.Avfilter.name} -> name = "buffer")
+        (fun { FFmpeg.Avfilter.name } -> name = "buffer")
         FFmpeg.Avfilter.buffers
     with
-      | Some buffer ->
-          buffer
-      | None ->
-          failwith "Could not find buffer ffmpeg filter!"
+      | Some buffer -> buffer
+      | None -> failwith "Could not find buffer ffmpeg filter!"
   in
   let buffer =
     let args =
-      [ `Pair ("video_size", `String (Printf.sprintf "%dx%d" width height));
+      [
+        `Pair ("video_size", `String (Printf.sprintf "%dx%d" width height));
         `Pair
           ( "pix_fmt",
             `String (FFmpeg.Avutil.Pixel_format.to_string pixel_format) );
         `Pair ("time_base", `Rational time_base);
-        `Pair ("pixel_aspect", `Rational pixel_aspect) ]
+        `Pair ("pixel_aspect", `Rational pixel_aspect);
+      ]
     in
     FFmpeg.Avfilter.attach ~name:"buffer" ~args buffer config
   in
   let fps =
     match
       List.find_opt
-        (fun {FFmpeg.Avfilter.name} -> name = "fps")
+        (fun { FFmpeg.Avfilter.name } -> name = "fps")
         FFmpeg.Avfilter.filters
     with
-      | Some fps ->
-          fps
-      | None ->
-          failwith "Could not find fps ffmpeg filter!"
+      | Some fps -> fps
+      | None -> failwith "Could not find fps ffmpeg filter!"
   in
   let fps =
     let args =
@@ -128,42 +126,39 @@ let mk_video_decoder ~put_video container =
   let buffersink =
     match
       List.find_opt
-        (fun {FFmpeg.Avfilter.name} -> name = "buffersink")
+        (fun { FFmpeg.Avfilter.name } -> name = "buffersink")
         FFmpeg.Avfilter.sinks
     with
-      | Some buffersink ->
-          buffersink
-      | None ->
-          failwith "Could not find buffersink ffmpeg filter!"
+      | Some buffersink -> buffersink
+      | None -> failwith "Could not find buffersink ffmpeg filter!"
   in
   let buffersink =
     FFmpeg.Avfilter.attach ~name:"buffersink" buffersink config
   in
   FFmpeg.Avfilter.link
     (List.hd FFmpeg.Avfilter.(buffer.io.outputs.video))
-    (List.hd FFmpeg.Avfilter.(fps.io.inputs.video)) ;
+    (List.hd FFmpeg.Avfilter.(fps.io.inputs.video));
   FFmpeg.Avfilter.link
     (List.hd FFmpeg.Avfilter.(fps.io.outputs.video))
-    (List.hd FFmpeg.Avfilter.(buffersink.io.inputs.video)) ;
+    (List.hd FFmpeg.Avfilter.(buffersink.io.inputs.video));
   let graph = FFmpeg.Avfilter.launch config in
   let _, input = List.hd FFmpeg.Avfilter.(graph.inputs.video) in
   let _, output = List.hd FFmpeg.Avfilter.(graph.outputs.video) in
   ( idx,
     stream,
     fun frame gen ->
-      input frame ;
+      input frame;
       let rec flush () =
         try
           let frame = output () in
           let img =
             match Scaler.convert scaler frame with
-              | [|(y, sy); (u, s); (v, _)|] ->
+              | [| (y, sy); (u, s); (v, _) |] ->
                   Image.YUV420.make target_width target_height y sy u v s
-              | _ ->
-                  assert false
+              | _ -> assert false
           in
           let content = Video.single img in
-          put_video gen [|content|] 0 (Video.length content) ;
+          put_video gen [| content |] 0 (Video.length content);
           flush ()
         with FFmpeg.Avutil.Error `Eagain -> ()
       in
@@ -178,24 +173,19 @@ let mk_decoder ~set_mode ~add_break ~audio ~video ~container =
   fun gen ->
     if not !mode_set then (
       match (audio, video) with
-        | Some _, Some _ ->
-            set_mode gen `Both
-        | Some _, None ->
-            set_mode gen `Audio
-        | None, Some _ ->
-            set_mode gen `Video
-        | _ ->
-            failwith "no content!" ) ;
-    mode_set := true ;
+        | Some _, Some _ -> set_mode gen `Both
+        | Some _, None -> set_mode gen `Audio
+        | None, Some _ -> set_mode gen `Video
+        | _ -> failwith "no content!" );
+    mode_set := true;
     match (audio, video, read_input_frame ()) with
       | Some (idx, _, decoder), _, `Audio (i, frame) when i = idx ->
           decoder frame gen
       | _, Some (idx, _, decoder), `Video (i, frame) when i = idx ->
           decoder frame gen
-      | _ ->
-          ()
+      | _ -> ()
       | exception FFmpeg.Avutil.Error `Eof ->
-          add_break ?sync:(Some `Drop) gen ;
+          add_break ?sync:(Some `Drop) gen;
           raise End_of_file
 
 let seek ~audio ~video ticks =
@@ -208,12 +198,9 @@ let seek ~audio ~video ticks =
     with FFmpeg.Avutil.Error _ -> 0
   in
   match (audio, video) with
-    | Some (_, s, _), _ ->
-        seek s
-    | _, Some (_, s, _) ->
-        seek s
-    | _ ->
-        raise No_stream
+    | Some (_, s, _), _ -> seek s
+    | _, Some (_, s, _) -> seek s
+    | _ -> raise No_stream
 
 let duration file =
   let container = FFmpeg.Av.open_input file in
@@ -233,7 +220,7 @@ let create_decoder fname =
     Tutils.mutexify m
       (fun () ->
         let pts = FFmpeg.Avutil.frame_pts frame in
-        let {FFmpeg.Avutil.num; den} = FFmpeg.Av.get_time_base stream in
+        let { FFmpeg.Avutil.num; den } = FFmpeg.Av.get_time_base stream in
         let position =
           Int64.to_float (Int64.mul (Int64.of_int num) pts) /. float den
         in
@@ -252,7 +239,9 @@ let create_decoder fname =
       Some
         ( idx,
           stream,
-          fun frame gen -> set_remaining stream frame ; decoder frame gen )
+          fun frame gen ->
+            set_remaining stream frame;
+            decoder frame gen )
     with FFmpeg.Avutil.Error _ -> None
   in
   let video =
@@ -263,13 +252,15 @@ let create_decoder fname =
       Some
         ( idx,
           stream,
-          fun frame gen -> set_remaining stream frame ; decoder frame gen )
+          fun frame gen ->
+            set_remaining stream frame;
+            decoder frame gen )
     with FFmpeg.Avutil.Error _ -> None
   in
   let close () = FFmpeg.Av.close container in
   ( {
-      Decoder.seek= seek ~audio ~video;
-      decode=
+      Decoder.seek = seek ~audio ~video;
+      decode =
         mk_decoder ~set_mode:G.set_mode ~add_break:G.add_break ~audio ~video
           ~container;
     },
@@ -297,8 +288,10 @@ let get_type ~url container =
           (FFmpeg.Avcodec.Audio.get_params_id codec)
       in
       ( channels,
-        [ Printf.sprintf "audio: {codec: %s, %dHz, %d channel(s)}" codec_name
-            rate channels ] )
+        [
+          Printf.sprintf "audio: {codec: %s, %dHz, %d channel(s)}" codec_name
+            rate channels;
+        ] )
     with FFmpeg.Avutil.Error _ -> (0, [])
   in
   let video, descr =
@@ -320,10 +313,10 @@ let get_type ~url container =
         :: descr )
     with FFmpeg.Avutil.Error _ -> (0, descr)
   in
-  if audio == 0 && video == 0 then failwith "No valid stream found in file." ;
+  if audio == 0 && video == 0 then failwith "No valid stream found in file.";
   log#info "ffmpeg recognizes %S as: %s." url
-    (String.concat ", " (List.rev descr)) ;
-  {Frame.audio; video; midi= 0}
+    (String.concat ", " (List.rev descr));
+  { Frame.audio; video; midi = 0 }
 
 let get_file_type filename =
   let container = FFmpeg.Av.open_input filename in
@@ -367,10 +360,10 @@ let check filename =
   match Configure.file_mime with
     | Some f -> List.mem (f filename) mime_types#get
     | None -> (
-      try
-        ignore (get_file_type filename) ;
-        true
-      with _ -> false )
+        try
+          ignore (get_file_type filename);
+          true
+        with _ -> false )
 
 let () = Request.dresolvers#register "FFMPEG" duration
 
@@ -392,8 +385,8 @@ module Make (Generator : Generator.S_Asio) = struct
       with FFmpeg.Avutil.Error _ -> None
     in
     {
-      Decoder.seek= seek ~audio ~video;
-      decode=
+      Decoder.seek = seek ~audio ~video;
+      decode =
         mk_decoder ~set_mode:Generator.set_mode ~add_break:Generator.add_break
           ~audio ~video ~container;
     }
