@@ -21,9 +21,7 @@
  *****************************************************************************)
 
 type opt_val = [ `String of string | `Int of int | `Float of float ]
-
 type output = [ `Stream | `Url of string ]
-
 type opts = (string, opt_val) Hashtbl.t
 
 type t = {

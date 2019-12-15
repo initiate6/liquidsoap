@@ -23,8 +23,10 @@
 (** FFMPEG encoder *)
 
 open FFmpeg
+
 module Resampler =
   Swresample.Make (Swresample.FltPlanarBigArray) (Swresample.Frame)
+
 module Scaler = Swscale.Make (Swscale.BigArray) (Swscale.Frame)
 
 let log = Ffmpeg_config.log

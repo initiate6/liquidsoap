@@ -23,7 +23,6 @@
 (** Decode and read metadata using ffmpeg. *)
 
 exception End_of_file
-
 exception No_stream
 
 let log = Log.make ["decoder"; "ffmpeg"]
@@ -42,8 +41,10 @@ let file_extensions =
 
 module ConverterInput = FFmpeg.Swresample.Make (FFmpeg.Swresample.Frame)
 module Converter = ConverterInput (FFmpeg.Swresample.FltPlanarBigArray)
+
 module Scaler =
   FFmpeg.Swscale.Make (FFmpeg.Swscale.Frame) (FFmpeg.Swscale.BigArray)
+
 module G = Generator.From_audio_video
 module Buffered = Decoder.Buffered (G)
 
