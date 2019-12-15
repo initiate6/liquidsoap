@@ -203,7 +203,7 @@ let seek ~audio ~video ticks =
   let position = Int64.of_float (position *. 1000.) in
   let seek stream =
     try
-      FFmpeg.Av.seek stream `Millisecond position [||] ;
+      FFmpeg.Av.seek stream `Millisecond position [||];
       ticks
     with FFmpeg.Avutil.Error _ -> 0
   in
@@ -283,8 +283,7 @@ let create_file_decoder filename kind =
     let remaining = remaining () in
     remaining + G.length generator + Frame.position frame - offset
   in
-  Buffered.make_file_decoder ~filename ~close ~kind ~remaining decoder
-    generator
+  Buffered.make_file_decoder ~filename ~close ~kind ~remaining decoder generator
 
 (* Get the type of an input container. *)
 let get_type ~url container =
@@ -349,7 +348,7 @@ let () =
         if Frame.type_has_kind (get_file_type filename) kind then true
         else (
           log#important "File %S has an incompatible number of channels."
-            filename ;
+            filename;
           false )
       then Some (fun () -> create_file_decoder filename kind)
       else None)
@@ -366,8 +365,7 @@ let () = Request.mresolvers#register "FFMPEG" get_tags
 
 let check filename =
   match Configure.file_mime with
-    | Some f ->
-        List.mem (f filename) mime_types#get
+    | Some f -> List.mem (f filename) mime_types#get
     | None -> (
       try
         ignore (get_file_type filename) ;
@@ -381,10 +379,8 @@ module Make (Generator : Generator.S_Asio) = struct
     let read = input.Decoder.read in
     let seek_input =
       match input.Decoder.lseek with
-        | None ->
-            None
-        | Some fn ->
-            Some (fun len _ -> fn len)
+        | None -> None
+        | Some fn -> Some (fun len _ -> fn len)
     in
     let container = FFmpeg.Av.open_input_stream ?seek:seek_input read in
     let audio =
@@ -407,8 +403,7 @@ module D_stream = Make (Generator.From_audio_video_plus)
 
 let () =
   Decoder.stream_decoders#register "FFMPEG"
-    ~sdoc:
-      "Use ffmpeg/libav to decode any stream with an appropriate MIME type."
+    ~sdoc:"Use ffmpeg/libav to decode any stream with an appropriate MIME type."
     (fun mime kind ->
       let ( <: ) a b = Frame.mul_sub_mul a b in
       if

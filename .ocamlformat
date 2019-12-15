@@ -1,4 +1,6 @@
-break-separators = after-and-docked
+profile = conventional
+break-separators = after
+space-around-lists = false
 doc-comments = before
 match-indent = 2
 match-indent-nested = always

@@ -131,7 +131,8 @@ let () =
 
 let pipe_proto kind arg_doc =
   Output.proto
-  @ [ ( "reopen_delay",
+  @ [
+      ( "reopen_delay",
         Lang.float_t,
         Some (Lang.float 120.),
         Some "Prevent re-opening within that delay, in seconds." );
@@ -150,9 +151,9 @@ let pipe_proto kind arg_doc =
         Some
           ( arg_doc
           ^ " Some strftime conversion specifiers are available: `%SMHdmY`. \
-             You can also use `$(..)` interpolation notation for metadata." )
-      );
-      ("", Lang.source_t kind, None, None) ]
+             You can also use `$(..)` interpolation notation for metadata." ) );
+      ("", Lang.source_t kind, None, None);
+    ]
 
 class virtual piped_output ~kind p =
   let reload_predicate = List.assoc "reopen_when" p in
@@ -166,7 +167,8 @@ class virtual piped_output ~kind p =
 
     initializer
     self#register_command "reopen" ~descr:"Re-open the output." (fun _ ->
-        self#reopen ; "Done.")
+        self#reopen;
+        "Done.")
 
     val mutable open_date = 0.
 
@@ -181,13 +183,12 @@ class virtual piped_output ~kind p =
         match current_metadata with
           | Some m ->
               fun x -> subst (Hashtbl.find (Meta_format.to_metadata m) x)
-          | None ->
-              fun _ -> raise Not_found
+          | None -> fun _ -> raise Not_found
       in
       Utils.interpolate current_metadata s
 
     method prepare_pipe =
-      self#open_pipe ;
+      self#open_pipe;
       open_date <- Unix.gettimeofday ()
 
     method output_stop =
@@ -201,12 +202,12 @@ class virtual piped_output ~kind p =
     method reopen : unit =
       Tutils.mutexify m
         (fun () ->
-          (self#log)#important "Re-opening output pipe." ;
+          self#log#important "Re-opening output pipe.";
           (* #output_stop can trigger #send, the [reopening] flag avoids loops *)
-          reopening <- true ;
-          self#output_stop ;
-          self#output_start ;
-          reopening <- false ;
+          reopening <- true;
+          self#output_stop;
+          self#output_start;
+          reopening <- false;
           need_reset <- false)
         ()
 
@@ -222,7 +223,7 @@ class virtual piped_output ~kind p =
 
     method insert_metadata m =
       if reload_on_metadata then (
-        current_metadata <- Some m ;
+        current_metadata <- Some m;
         need_reset <- true )
       else super#insert_metadata m
   end
@@ -232,10 +233,12 @@ class virtual piped_output ~kind p =
   * it. *)
 
 let chan_proto kind arg_doc =
-  [ ( "flush",
+  [
+    ( "flush",
       Lang.bool_t,
       Some (Lang.bool false),
-      Some "Perform a flush after each write." ) ]
+      Some "Perform a flush after each write." );
+  ]
   @ pipe_proto kind arg_doc
 
 class virtual chan_output p =
@@ -251,11 +254,11 @@ class virtual chan_output p =
 
     method write_pipe b ofs len =
       let chan = Utils.get_some chan in
-      output_substring chan b ofs len ;
+      output_substring chan b ofs len;
       if flush then Stdlib.flush chan
 
     method close_pipe =
-      self#close_chan (Utils.get_some chan) ;
+      self#close_chan (Utils.get_some chan);
       chan <- None
 
     method is_open = chan <> None
@@ -306,8 +309,8 @@ class file_output ~format_val ~kind p =
       let filename = self#filename in
       Utils.mkdir ~perm:dir_perm (Filename.dirname filename) ;
       let fd = open_out_gen mode perm filename in
-      current_filename <- Some filename ;
-      set_binary_mode_out fd true ;
+      current_filename <- Some filename;
+      set_binary_mode_out fd true;
       fd
 
     method close_chan fd =
@@ -337,7 +340,8 @@ class file_output_using_encoder ~format_val ~kind p =
   end
 
 let file_proto kind =
-  [ ( "append",
+  [
+    ( "append",
       Lang.bool_t,
       Some (Lang.bool false),
       Some "Do not truncate but append in the file if it exists." );
@@ -355,14 +359,15 @@ let file_proto kind =
       Some
         "Permission of the directories if some have to be created, up to \
          umask. Although you can enter values in octal notation (0oXXX) they \
-         will be displayed in decimal (for instance, 0o777 = 7*8^2 + 7*8 + 7 \
-         = 511)." );
+         will be displayed in decimal (for instance, 0o777 = 7*8^2 + 7*8 + 7 = \
+         511)." );
     ( "on_close",
       Lang.fun_t [(false, "", Lang.string_t)] Lang.unit_t,
       Some (Lang.val_cst_fun [("", Lang.string_t, None)] Lang.unit),
       Some
-        "This function will be called for each file, after that it is \
-         finished and closed. The filename will be passed as argument." ) ]
+        "This function will be called for each file, after that it is finished \
+         and closed. The filename will be passed as argument." );
+  ]
   @ chan_proto kind "Filename where to output the stream."
 
 let () =

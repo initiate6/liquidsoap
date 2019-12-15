@@ -49,21 +49,15 @@ type handler = {
 let convert_options opts =
   let convert name fn =
     match Hashtbl.find_opt opts name with
-      | None ->
-          ()
-      | Some v ->
-          Hashtbl.replace opts name (fn v)
+      | None -> ()
+      | Some v -> Hashtbl.replace opts name (fn v)
   in
   convert "sample_fmt" (function
-    | `String fmt ->
-        `Int FFmpeg.Avutil.Sample_format.(get_id (find fmt))
-    | _ ->
-        assert false) ;
+    | `String fmt -> `Int FFmpeg.Avutil.Sample_format.(get_id (find fmt))
+    | _ -> assert false);
   convert "channel_layout" (function
-    | `String layout ->
-        `Int FFmpeg.Avutil.Channel_layout.(get_id (find layout))
-    | _ ->
-        assert false)
+    | `String layout -> `Int FFmpeg.Avutil.Channel_layout.(get_id (find layout))
+    | _ -> assert false)
 
 let mk_format ffmpeg =
   match ffmpeg.Ffmpeg_format.format with
@@ -87,13 +81,10 @@ let mk_encoder ~ffmpeg ~options output =
   let dst_freq = Lazy.force ffmpeg.Ffmpeg_format.samplerate in
   let channels_layout =
     match ffmpeg.Ffmpeg_format.channels with
-      | 1 ->
-          `Mono
-      | 2 ->
-          `Stereo
+      | 1 -> `Mono
+      | 2 -> `Stereo
       | _ ->
-          failwith
-            "%ffmpeg encoder only supports mono or stereo audio for now!"
+          failwith "%ffmpeg encoder only supports mono or stereo audio for now!"
   in
   let video_width = Lazy.force Frame.video_width in
   let video_height = Lazy.force Frame.video_height in
@@ -194,7 +185,7 @@ let encoder ffmpeg meta =
     let options = Hashtbl.copy ffmpeg.Ffmpeg_format.options in
     convert_options options ;
     let write str ofs len =
-      Strings.Mutable.add_subbytes buf str ofs len ;
+      Strings.Mutable.add_subbytes buf str ofs len;
       len
     in
     let format = mk_format ffmpeg in
@@ -229,7 +220,5 @@ let encoder ffmpeg meta =
 
 let () =
   Encoder.plug#register "FFMPEG" (function
-    | Encoder.Ffmpeg m ->
-        Some (fun _ -> encoder m)
-    | _ ->
-        None)
+    | Encoder.Ffmpeg m -> Some (fun _ -> encoder m)
+    | _ -> None)
