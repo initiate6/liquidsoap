@@ -21,6 +21,7 @@
  *****************************************************************************)
 
 open Lang_values
+open Lang_values.Ground
 open Lang_encoders
 
 let ffmpeg_gen params =
@@ -37,35 +38,37 @@ let ffmpeg_gen params =
   in
   List.fold_left
     (fun f -> function
-      | "format", { term = String fmt; _ } when fmt = "" ->
+      | "format", { term = Ground (String fmt); _ } when fmt = "" ->
           { f with Ffmpeg_format.format = None }
-      | "format", { term = String fmt; _ } ->
+      | "format", { term = Ground (String fmt); _ } ->
           { f with Ffmpeg_format.format = Some fmt }
-      | "audio_codec", { term = String c; _ } when c = "" ->
+      | "audio_codec", { term = Ground (String c); _ } when c = "" ->
           { f with Ffmpeg_format.audio_codec = None }
-      | "audio_codec", { term = String c; _ } ->
+      | "audio_codec", { term = Ground (String c); _ } ->
           { f with Ffmpeg_format.audio_codec = Some c }
-      | "video_codec", { term = String c; _ } when c = "" ->
+      | "video_codec", { term = Ground (String c); _ } when c = "" ->
           { f with Ffmpeg_format.video_codec = None }
-      | "video_codec", { term = String c; _ } ->
+      | "video_codec", { term = Ground (String c); _ } ->
           { f with Ffmpeg_format.video_codec = Some c }
-      | "channels", { term = Int i; _ } | "ac", { term = Int i; _ } ->
+      | "channels", { term = Ground (Int i); _ }
+      | "ac", { term = Ground (Int i); _ } ->
           { f with Ffmpeg_format.channels = i }
-      | "samplerate", { term = Int i; _ } | "ar", { term = Int i; _ } ->
+      | "samplerate", { term = Ground (Int i); _ }
+      | "ar", { term = Ground (Int i); _ } ->
           { f with Ffmpeg_format.samplerate = Lazy.from_val i }
-      | "sample_fmt", { term = String fmt; _ } ->
+      | "sample_fmt", { term = Ground (String fmt); _ } ->
           Hashtbl.add f.Ffmpeg_format.options "sample_fmt" (`String fmt);
           f
-      | "channel_layout", { term = String layout; _ } ->
+      | "channel_layout", { term = Ground (String layout); _ } ->
           Hashtbl.add f.Ffmpeg_format.options "channel_layout" (`String layout);
           f
-      | k, { term = String s; _ } ->
+      | k, { term = Ground (String s); _ } ->
           Hashtbl.add f.Ffmpeg_format.options k (`String s);
           f
-      | k, { term = Int i; _ } ->
+      | k, { term = Ground (Int i); _ } ->
           Hashtbl.add f.Ffmpeg_format.options k (`Int i);
           f
-      | k, { term = Float i; _ } ->
+      | k, { term = Ground (Float i); _ } ->
           Hashtbl.add f.Ffmpeg_format.options k (`Float i);
           f
       | "", { term = Var s; _ } when String.lowercase_ascii s = "mono" ->
