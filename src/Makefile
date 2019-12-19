@@ -223,7 +223,8 @@ builtins = lang/lang_builtins.ml \
            $(if $(W_MAGIC),lang/builtins_magic.ml) \
            $(if $(W_CRY),lang/builtins_cry.ml) \
            $(if $(W_LASTFM),lang/builtins_lastfm.ml) \
-           $(if $(W_PROMETHEUS),lang/builtins_prometheus.ml)
+           $(if $(W_PROMETHEUS),lang/builtins_prometheus.ml) \
+	   $(if $(W_FFMPEG),lang/builtins_ffmpeg.ml)
 
 liquidsoap_sources= \
 	tools/log.ml $(tools) converters/audio_converter.ml $(stream) \
