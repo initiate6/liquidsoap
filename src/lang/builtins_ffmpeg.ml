@@ -30,13 +30,17 @@ module Graph = Lang.MkAbstract (struct
 end)
 
 module Audio = Lang.MkAbstract (struct
-  type content = Avfilter.config
+  type content =
+    [ `Input of ([ `Attached ], [ `Audio ], [ `Input ]) Avfilter.pad
+    | `Output of ([ `Attached ], [ `Audio ], [ `Output ]) Avfilter.pad ]
 
   let name = "ffmpeg.filter.audio"
 end)
 
 module Video = Lang.MkAbstract (struct
-  type content = Avfilter.config
+  type content =
+    [ `Input of ([ `Attached ], [ `Video ], [ `Input ]) Avfilter.pad
+    | `Output of ([ `Attached ], [ `Video ], [ `Output ]) Avfilter.pad ]
 
   let name = "ffmpeg.filter.video"
 end)
@@ -80,9 +84,8 @@ let () =
       assert false)
 
 let () =
-  let ret_t = Lang.univ_t () in
   add_builtin "ffmpeg.filter.create" ~cat:Liq
     ~descr:"Configure and launch a filter graph"
-    [("", Lang.fun_t [(false, "", Graph.t)] ret_t, None, None)]
-    ret_t
+    [("", Lang.fun_t [(false, "", Graph.t)] Lang.unit_t, None, None)]
+    Lang.unit_t
     (fun _ -> assert false)
