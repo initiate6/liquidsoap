@@ -21,7 +21,6 @@
  *****************************************************************************)
 
 open Lang_builtins
-open FFmpeg
 
 module Graph = Lang.MkAbstract (struct
   type content = Avfilter.config

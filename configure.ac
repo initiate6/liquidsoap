@@ -535,7 +535,33 @@ AC_CHECK_OCAML_BINDING([gavl])
 # FFMPEG
 #
 
-AC_CHECK_OCAML_BINDING([ffmpeg])
+AC_CHECK_OCAML_BINDING([ffmpeg-avutil])
+AC_CHECK_OCAML_BINDING([ffmpeg-av])
+AC_CHECK_OCAML_BINDING([ffmpeg-avcodec])
+AC_CHECK_OCAML_BINDING([ffmpeg-avfilter])
+AC_CHECK_OCAML_BINDING([ffmpeg-swresample])
+AC_CHECK_OCAML_BINDING([ffmpeg-swscale])
+
+if test -n "${W_FFMPEG_AV}" && test -n "${W_FFMPEG_AVFILTER}" &&
+   test -n "${W_FFMPEG_SWSCALE}" && test -n "${W_FFMPEG_SWRESAMPLE}"; then
+  W_FFMPEG_DECODER=yes
+  w_FFMPEG_DECODER=yes
+  b_FFMPEG_DECODER=true
+else
+  W_FFMPEG_DECODER=""
+  w_FFMPEG_DECODER="no (require ffmpeg-av, ffmpeg-avfilter, ffmpeg-swscale and ffmpeg-swresample)"
+  b_FFMPEG_DECODER=false
+fi
+
+if test -n "${W_FFMPEG_AV}" && test -n "${W_FFMPEG_SWSCALE}" && test -n "${W_FFMPEG_SWRESAMPLE}"; then
+  W_FFMPEG_ENCODER=yes
+  w_FFMPEG_ENCODER=yes
+  b_FFMPEG_ENCODER=true
+else
+  W_FFMPEG_ENCODER=""
+  w_FFMPEG_ENCODER="no (require ffmpeg-av, ffmpeg-swscale and ffmpeg-swresample)"
+  b_FFMPEG_ENCODER=false
+fi
 
 #
 # Jack
@@ -989,7 +1015,7 @@ cat <<EOMSG
  * Supported input formats
    - MP3               : $w_MAD
    - AAC               : $w_FAAD
-   - Ffmpeg            : $w_FFMPEG
+   - Ffmpeg            : $w_FFMPEG_DECODER
    - Flac (native)     : $w_FLAC
    - Flac (ogg)        : $w_FLAC_OGG
    - Lastfm            : $w_LASTFM
@@ -1001,7 +1027,7 @@ cat <<EOMSG
 
  * Supported output formats
    - FDK-AAC           : $w_FDKAAC
-   - Ffmpeg            : $w_FFMPEG
+   - Ffmpeg            : $w_FFMPEG_ENCODER
    - MP3               : $w_LAME
    - MP3 (fixed-point) : $w_SHINE
    - Opus              : $w_OPUS
@@ -1017,6 +1043,7 @@ cat <<EOMSG
  * Input / output
    - ALSA              : $w_ALSA
    - AO                : $w_AO
+   - FFmpeg            : $w_FFMPEG_AV
    - Icecast/Shoutcast : $w_CRY
    - GStreamer         : $w_GSTREAMER
    - JACK              : $w_BJACK
@@ -1026,6 +1053,7 @@ cat <<EOMSG
    - SRT               : $w_SRT
 
  * Audio manipulation
+   - FFmpeg            : $w_FFMPEG_SWRESAMPLE
    - LADSPA            : $w_LADSPA
    - Lilv              : $w_LILV
    - Samplerate        : $w_SAMPLERATE
@@ -1033,7 +1061,7 @@ cat <<EOMSG
 
  * Video manipulation
    - camlimages        : $w_CAMLIMAGES
-   - FFmpeg            : $w_FFMPEG
+   - FFmpeg            : $w_FFMPEG_SWSCALE
    - frei0r            : $w_FREI0R
    - Gavl              : $w_GAVL
    - SDL-image         : $w_TSDL_IMAGE
@@ -1049,6 +1077,7 @@ cat <<EOMSG
 
  * Additional libraries
    - curl URI resolver : requires curl at runtime
+   - FFmpeg filters:   : $w_FFMPEG_AVFILTER
    - dynlink           : $w_DYNLINK
    - inotify           : $w_INOTIFY
    - lo                : $w_LO
@@ -1118,7 +1147,14 @@ variables {
   ogg_flac-enabled: $b_FLAC_OGG
   mad-enabled: $b_MAD
   faad-enabled: $b_FAAD
-  ffmpeg-enabled: $b_FFMPEG
+  ffmpeg-avutil-enabled: $b_FFMPEG_AVUTIL
+  ffmpeg-av-enabled: $b_FFMPEG_AV
+  ffmpeg-avcodec-enabled: $b_FFMPEG_AVCODEC
+  ffmpeg-avfilter-enabled: $b_FFMPEG_AVFILTER
+  ffmpeg-swresample-enabled: $b_FFMPEG_SWRESAMPLE
+  ffmpeg-swscale-enabled: $b_FFMPEG_SWSCALE
+  ffmpeg-decoder-enabled: $b_FFMPEG_DECODER
+  ffmpeg-encoder-enabled: $b_FFMPEG_ENCODER
   xmlplaylist-enabled: $b_XMLPLAYLIST
   lastfm-enabled: $b_LASTFM
   lame-enabled: $b_LAME
@@ -1139,7 +1175,6 @@ variables {
   soundtouch-enabled: $b_SOUNDTOUCH
   ladspa-enabled: $b_LADSPA
   gavl-enabled: $b_GAVL
-  ffmpeg-enabled: $b_FFMPEG
   frei0r-enabled: $b_FREI0R
   camlimages-enabled: $b_CAMLIMAGES
   dssi-enabled: $b_DSSI

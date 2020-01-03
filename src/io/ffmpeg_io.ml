@@ -48,12 +48,12 @@ class input ~bufferize ~kind ~start ~on_start ~on_stop url =
       match container with
         | None -> ()
         | Some input ->
-            FFmpeg.Av.close input;
+            Av.close input;
             container <- None
 
     method private get_decoder =
       self#close_container;
-      let input = FFmpeg.Av.open_input url in
+      let input = Av.open_input url in
       let content_type = Ffmpeg_decoder.get_type ~url input in
       if not (Frame.type_has_kind content_type kind) then
         failwith
@@ -65,14 +65,14 @@ class input ~bufferize ~kind ~start ~on_start ~on_stop url =
           Some
             (Ffmpeg_decoder.mk_audio_decoder ~put_audio:Generator.put_audio
                input)
-        with FFmpeg.Avutil.Error _ -> None
+        with Avutil.Error _ -> None
       in
       let video =
         try
           Some
             (Ffmpeg_decoder.mk_video_decoder ~put_video:Generator.put_video
                input)
-        with FFmpeg.Avutil.Error _ -> None
+        with Avutil.Error _ -> None
       in
       Ffmpeg_decoder.mk_decoder ~set_mode:Generator.set_mode
         ~add_break:Generator.add_break ~audio ~video ~container:input
