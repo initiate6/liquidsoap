@@ -563,6 +563,9 @@ else
   b_FFMPEG_ENCODER=false
 fi
 
+AC_SUBST(W_FFMPEG_DECODER)
+AC_SUBST(W_FFMPEG_ENCODER)
+
 #
 # Jack
 #
