@@ -553,6 +553,8 @@ else
   b_FFMPEG_DECODER=false
 fi
 
+AC_SUBST(W_FFMPEG_DECODER)
+
 if test -n "${W_FFMPEG_AV}" && test -n "${W_FFMPEG_SWSCALE}" && test -n "${W_FFMPEG_SWRESAMPLE}"; then
   W_FFMPEG_ENCODER=yes
   w_FFMPEG_ENCODER=yes
@@ -563,7 +565,6 @@ else
   b_FFMPEG_ENCODER=false
 fi
 
-AC_SUBST(W_FFMPEG_DECODER)
 AC_SUBST(W_FFMPEG_ENCODER)
 
 #
