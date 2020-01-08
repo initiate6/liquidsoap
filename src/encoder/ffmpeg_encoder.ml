@@ -78,11 +78,11 @@ let mk_encoder ~ffmpeg ~options output =
   let vchans = if video_codec = None then 0 else 1 in
   let dst_freq = Lazy.force ffmpeg.Ffmpeg_format.samplerate in
   let channels_layout =
-    match ffmpeg.Ffmpeg_format.channels with
-      | 1 -> `Mono
-      | 2 -> `Stereo
-      | _ ->
-          failwith "%ffmpeg encoder only supports mono or stereo audio for now!"
+    try Avutil.Channel_layout.get_default ffmpeg.Ffmpeg_format.channels
+    with Not_found ->
+      failwith
+        "%ffmpeg encoder: could not find a default channel configuration for \
+         this number of channels.."
   in
   let video_width = Lazy.force Frame.video_width in
   let video_height = Lazy.force Frame.video_height in

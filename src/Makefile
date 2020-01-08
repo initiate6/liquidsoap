@@ -173,6 +173,7 @@ io = io/udp_io.ml \
 	$(if $(W_PORTAUDIO),io/portaudio_io.ml) \
 	$(if $(W_ALSA),io/alsa_io.ml) \
 	$(if $(W_GSTREAMER),io/gstreamer_io.ml) \
+        $(if $(W_FFMPEG_AVFILTER),io/ffmpeg_filter.ml) \
 	$(if $(W_FFMPEG_AV),io/ffmpeg_io.ml)
 
 tools = tools/extralib.ml tools/JSON.ml \
