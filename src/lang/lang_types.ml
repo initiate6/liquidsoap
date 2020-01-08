@@ -685,6 +685,8 @@ let rec ( <: ) a b =
               let l' = List.init (List.length m - !n) (fun _ -> `Ellipsis) in
               raise (Error (`Tuple (l @ [a] @ l'), `Tuple (l @ [b] @ l'))))
           l m
+    | Tuple [a], _ -> a <: b
+    | _, Tuple [b] -> a <: b
     | Zero, Zero -> ()
     | Zero, Variable -> ()
     | Succ t1, Succ t2 -> (
