@@ -49,7 +49,7 @@ let string_of_options options =
 
 let to_string m =
   let format =
-    match m.format with Some f -> Printf.sprintf "format=%S," f | None -> ""
+    match m.format with Some f -> Printf.sprintf "format=%S" f | None -> ""
   in
   let opts = string_of_options m.options in
   let audio_codec =
