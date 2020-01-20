@@ -113,7 +113,9 @@ let () =
           [("", Graph.t, None, None)]
           @ List.map (fun t -> ("", t, None, None)) (mk_av_t io.inputs)
         in
-        let output_t = Lang.tuple_t (mk_av_t io.outputs) in
+        let output_t =
+          match mk_av_t io.outputs with [x] -> x | l -> Lang.tuple_t l
+        in
         add_builtin ~cat:Liq ("ffmpeg.filter." ^ name)
           ~descr:("Ffmpeg filter: " ^ description)
           input_t output_t (apply_filter ~filter))
