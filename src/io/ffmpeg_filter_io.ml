@@ -81,13 +81,15 @@ class audio_input ~kind =
          this number of channels.."
   in
   let samplerate = Frame.audio_of_seconds 1. in
-  let converter =
-    FromFrame.create ~out_sample_format:`Dbl channels_layout samplerate
-      channels_layout samplerate
-  in
   let generator = Generator.create `Audio in
   object (self)
     inherit Source.source kind ~name:"ffmpeg.filter.output"
+
+    val mutable in_sample_format = `Dbl
+
+    val mutable converter =
+      FromFrame.create ~in_sample_format:`Dbl ~out_sample_format:`Dbl
+        channels_layout samplerate channels_layout samplerate
 
     val mutable output = fun _ -> assert false
 
@@ -99,10 +101,22 @@ class audio_input ~kind =
 
     method remaining = Generator.remaining generator
 
+    method private get_output_frame =
+      let f = output () in
+      let sample_format = Avutil.Audio.frame_get_sample_format f in
+      if sample_format <> in_sample_format then begin
+        self#log#important "Sample format change detected!";
+        in_sample_format <- sample_format;
+        converter <-
+          FromFrame.create ~in_sample_format ~out_sample_format:`Dbl
+            channels_layout samplerate channels_layout samplerate
+      end;
+      f
+
     method private flush_buffer =
       let rec f () =
         try
-          let pcm = FromFrame.convert converter (output ()) in
+          let pcm = FromFrame.convert converter self#get_output_frame in
           Generator.put_audio generator pcm 0 (Audio.length pcm);
           f ()
         with Avutil.Error `Eagain -> ()

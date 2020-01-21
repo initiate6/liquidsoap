@@ -80,7 +80,7 @@ let apply_filter ~filter p =
     List.iteri
       (fun idx input ->
         let output =
-          match Audio.of_value (Lang.assoc "" (idx + 1) p) with
+          match Audio.of_value (Lang.assoc "" (idx + 2) p) with
             | `Output output -> output
             | _ -> assert false
         in
@@ -95,10 +95,11 @@ let apply_filter ~filter p =
         in
         link output input)
       filter.io.inputs.video;
-    Lang.tuple
-      ( List.map (fun p -> Audio.to_value (`Output p)) filter.io.outputs.audio
+    let output =
+      List.map (fun p -> Audio.to_value (`Output p)) filter.io.outputs.audio
       @ List.map (fun p -> Video.to_value (`Output p)) filter.io.outputs.video
-      ))
+    in
+    match output with [x] -> x | l -> Lang.tuple l)
 
 let () =
   Avfilter.(
@@ -133,7 +134,26 @@ let get_filter =
                 f
             | None -> failwith ("Could not find ffmpeg filter: " ^ name) )
 
+let abuffer_args () =
+  let samplerate = Frame.audio_of_seconds 1. in
+  let channels = 2 in
+  (* TODO *)
+  let channel_layout =
+    try Avutil.Channel_layout.get_default channels
+    with Not_found ->
+      failwith
+        "ffmpeg filter: could not find a default channel configuration for \
+         this number of channels.."
+  in
+  [
+    `Pair ("sample_rate", `Int samplerate);
+    `Pair ("channels", `Int channels);
+    `Pair ("channel_layout", `Int (Avutil.Channel_layout.get_id channel_layout));
+    `Pair ("sample_fmt", `Int (Avutil.Sample_format.get_id `Dbl));
+  ]
+
 let () =
+  (* TODO *)
   let audio_t = Lang.(source_t (kind_type_of_kind_format (audio_n 2))) in
   let kind = Frame.{ audio = mul_of_int 2; video = Zero; midi = Zero } in
 
@@ -144,7 +164,9 @@ let () =
       let source_val = Lang.assoc "" 2 p in
       let name = uniq_name "abuffer" in
       let abuffer = get_filter ~source:Avfilter.buffers "abuffer" in
-      let abuffer = Avfilter.attach ~name abuffer graph.config in
+      let abuffer =
+        Avfilter.attach ~args:(abuffer_args ()) ~name abuffer graph.config
+      in
       let s = Ffmpeg_filter_io.(new audio_output ~name ~kind source_val) in
       Avfilter.(Hashtbl.add graph.entries.inputs.audio name s#set_input);
       Audio.to_value (`Output (List.hd Avfilter.(abuffer.io.outputs.audio))));
@@ -182,4 +204,33 @@ let () =
     ~descr:"Configure and launch a filter graph"
     [("", Lang.fun_t [(false, "", Graph.t)] Lang.unit_t, None, None)]
     Lang.unit_t
-    (fun _ -> assert false)
+    (fun p ->
+      let fn = List.assoc "" p in
+      let graph =
+        Avfilter.
+          {
+            config = Avfilter.init ();
+            entries =
+              {
+                inputs =
+                  { audio = Hashtbl.create 10; video = Hashtbl.create 10 };
+                outputs =
+                  { audio = Hashtbl.create 10; video = Hashtbl.create 10 };
+              };
+          }
+      in
+      ignore (Lang.apply ~t:Lang.unit_t fn [("", Graph.to_value graph)]);
+      let filter = Avfilter.launch graph.config in
+      Avfilter.(
+        List.iter
+          (fun (name, input) ->
+            let set_input = Hashtbl.find graph.entries.inputs.audio name in
+            set_input input)
+          filter.inputs.audio);
+      Avfilter.(
+        List.iter
+          (fun (name, output) ->
+            let set_output = Hashtbl.find graph.entries.outputs.audio name in
+            set_output output)
+          filter.outputs.audio);
+      Lang.unit)
