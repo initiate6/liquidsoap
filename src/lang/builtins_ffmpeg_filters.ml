@@ -134,10 +134,8 @@ let get_filter =
                 f
             | None -> failwith ("Could not find ffmpeg filter: " ^ name) )
 
-let abuffer_args () =
+let abuffer_args channels =
   let samplerate = Frame.audio_of_seconds 1. in
-  let channels = 2 in
-  (* TODO *)
   let channel_layout =
     try Avutil.Channel_layout.get_default channels
     with Not_found ->
@@ -153,8 +151,8 @@ let abuffer_args () =
   ]
 
 let () =
-  (* TODO *)
-  let audio_t = Lang.(source_t (kind_type_of_kind_format (audio_n 2))) in
+  let audio_fixed = Lang.any_fixed_with ~audio:1 ~video:0 ~midi:0 () in
+  let audio_t = Lang.(source_t (kind_type_of_kind_format audio_fixed)) in
   let kind = Frame.{ audio = mul_of_int 2; video = Zero; midi = Zero } in
 
   add_builtin ~cat:Liq "ffmpeg.filter.audio.input"
@@ -162,11 +160,12 @@ let () =
     [("", Graph.t, None, None); ("", audio_t, None, None)] Audio.t (fun p ->
       let graph = Graph.of_value (Lang.assoc "" 1 p) in
       let source_val = Lang.assoc "" 2 p in
+      let kind = (Lang.to_source source_val)#kind in
+      let channels = Frame.((type_of_kind kind).audio) in
       let name = uniq_name "abuffer" in
       let abuffer = get_filter ~source:Avfilter.buffers "abuffer" in
-      let abuffer =
-        Avfilter.attach ~args:(abuffer_args ()) ~name abuffer graph.config
-      in
+      let args = abuffer_args channels in
+      let abuffer = Avfilter.attach ~args ~name abuffer graph.config in
       let s = Ffmpeg_filter_io.(new audio_output ~name ~kind source_val) in
       Avfilter.(Hashtbl.add graph.entries.inputs.audio name s#set_input);
       Audio.to_value (`Output (List.hd Avfilter.(abuffer.io.outputs.audio))));
