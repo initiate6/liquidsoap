@@ -151,9 +151,7 @@ let abuffer_args channels =
   ]
 
 let () =
-  let audio_fixed = Lang.any_fixed_with ~audio:1 ~video:0 ~midi:0 () in
-  let audio_t = Lang.(source_t (kind_type_of_kind_format audio_fixed)) in
-  let kind = Frame.{ audio = mul_of_int 2; video = Zero; midi = Zero } in
+  let audio_t = Lang.(source_t (kind_type_of_kind_format audio_any)) in
 
   add_builtin ~cat:Liq "ffmpeg.filter.audio.input"
     ~descr:"Attach an audio source to a filter's input"
@@ -183,7 +181,7 @@ let () =
       let abuffersink = get_filter ~source:Avfilter.sinks "abuffersink" in
       let abuffersink = Avfilter.attach ~name abuffersink graph.config in
       Avfilter.(link pad (List.hd abuffersink.io.inputs.audio));
-      let s = Ffmpeg_filter_io.(new audio_input ~kind) in
+      let s = new Ffmpeg_filter_io.audio_input () in
       Avfilter.(Hashtbl.add graph.entries.outputs.audio name s#set_output);
       Lang.source (s :> Source.source));
 

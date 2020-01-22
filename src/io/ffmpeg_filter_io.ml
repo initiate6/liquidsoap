@@ -73,7 +73,7 @@ class audio_output ~name ~kind val_source =
 type in_config = { format : Avutil.Sample_format.t; rate : int; channels : int }
 
 (* Same thing here. *)
-class audio_input ~kind =
+class audio_input () =
   let channels_layout channels =
     try Avutil.Channel_layout.get_default channels
     with Not_found ->
@@ -81,23 +81,53 @@ class audio_input ~kind =
         "ffmpeg filter: could not find a default channel configuration for \
          this number of channels.."
   in
-  let out_channels = Frame.((type_of_kind kind).audio) in
-  let out_channels_layout = channels_layout out_channels in
   let out_samplerate = Frame.audio_of_seconds 1. in
-  let mk_converter { format; rate; channels } =
-    FromFrame.create ~in_sample_format:format ~out_sample_format:`Dbl
-      (channels_layout channels) rate out_channels_layout out_samplerate
-  in
-  let config =
-    { format = `Dbl; rate = out_samplerate; channels = out_channels }
-  in
   let generator = Generator.create `Audio in
+  let kind = Frame.{ audio = Succ Variable; video = Zero; midi = Zero } in
   object (self)
     inherit Source.source kind ~name:"ffmpeg.filter.output"
 
-    val mutable in_config = config
+    val mutable config = None
 
-    val mutable converter = mk_converter config
+    val mutable converter = None
+
+    method private convert frame =
+      let in_config =
+        {
+          format = Avutil.Audio.frame_get_sample_format frame;
+          rate = Avutil.Audio.frame_get_sample_rate frame;
+          channels = Avutil.Audio.frame_get_channels frame;
+        }
+      in
+      let out_config =
+        {
+          format = `Dbl;
+          rate = out_samplerate;
+          channels = Frame.((type_of_kind self#kind).audio);
+        }
+      in
+      let mk_converter () =
+        config <- Some (in_config, out_config);
+        let c =
+          FromFrame.create ~in_sample_format:in_config.format
+            ~out_sample_format:out_config.format
+            (channels_layout in_config.channels)
+            in_config.rate
+            (channels_layout out_config.channels)
+            out_config.rate
+        in
+        converter <- Some c;
+        c
+      in
+      let converter =
+        match (converter, config) with
+          | None, _ -> mk_converter ()
+          | _, Some c when c <> (in_config, out_config) ->
+              self#log#important "Format change detected!";
+              mk_converter ()
+          | Some c, _ -> c
+      in
+      FromFrame.convert converter frame
 
     val mutable output = fun _ -> assert false
 
@@ -109,26 +139,10 @@ class audio_input ~kind =
 
     method remaining = Generator.remaining generator
 
-    method private get_output_frame =
-      let f = output () in
-      let config =
-        {
-          format = Avutil.Audio.frame_get_sample_format f;
-          rate = Avutil.Audio.frame_get_sample_rate f;
-          channels = Avutil.Audio.frame_get_channels f;
-        }
-      in
-      if config <> in_config then begin
-        self#log#important "format change detected!";
-        in_config <- config;
-        converter <- mk_converter config
-      end;
-      f
-
     method private flush_buffer =
       let rec f () =
         try
-          let pcm = FromFrame.convert converter self#get_output_frame in
+          let pcm = self#convert (output ()) in
           Generator.put_audio generator pcm 0 (Audio.length pcm);
           f ()
         with Avutil.Error `Eagain -> ()
