@@ -70,26 +70,34 @@ class audio_output ~name ~kind val_source =
       input aframe
   end
 
+type in_config = { format : Avutil.Sample_format.t; rate : int; channels : int }
+
 (* Same thing here. *)
 class audio_input ~kind =
-  let channels = Frame.((type_of_kind kind).audio) in
-  let channels_layout =
+  let channels_layout channels =
     try Avutil.Channel_layout.get_default channels
     with Not_found ->
       failwith
         "ffmpeg filter: could not find a default channel configuration for \
          this number of channels.."
   in
-  let samplerate = Frame.audio_of_seconds 1. in
+  let out_channels = Frame.((type_of_kind kind).audio) in
+  let out_channels_layout = channels_layout out_channels in
+  let out_samplerate = Frame.audio_of_seconds 1. in
+  let mk_converter { format; rate; channels } =
+    FromFrame.create ~in_sample_format:format ~out_sample_format:`Dbl
+      (channels_layout channels) rate out_channels_layout out_samplerate
+  in
+  let config =
+    { format = `Dbl; rate = out_samplerate; channels = out_channels }
+  in
   let generator = Generator.create `Audio in
   object (self)
     inherit Source.source kind ~name:"ffmpeg.filter.output"
 
-    val mutable in_sample_format = `Dbl
+    val mutable in_config = config
 
-    val mutable converter =
-      FromFrame.create ~in_sample_format:`Dbl ~out_sample_format:`Dbl
-        channels_layout samplerate channels_layout samplerate
+    val mutable converter = mk_converter config
 
     val mutable output = fun _ -> assert false
 
@@ -103,13 +111,17 @@ class audio_input ~kind =
 
     method private get_output_frame =
       let f = output () in
-      let sample_format = Avutil.Audio.frame_get_sample_format f in
-      if sample_format <> in_sample_format then begin
-        self#log#important "Sample format change detected!";
-        in_sample_format <- sample_format;
-        converter <-
-          FromFrame.create ~in_sample_format ~out_sample_format:`Dbl
-            channels_layout samplerate channels_layout samplerate
+      let config =
+        {
+          format = Avutil.Audio.frame_get_sample_format f;
+          rate = Avutil.Audio.frame_get_sample_rate f;
+          channels = Avutil.Audio.frame_get_channels f;
+        }
+      in
+      if config <> in_config then begin
+        self#log#important "format change detected!";
+        in_config <- config;
+        converter <- mk_converter config
       end;
       f
 
