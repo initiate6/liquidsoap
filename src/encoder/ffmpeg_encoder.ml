@@ -77,13 +77,6 @@ let mk_encoder ~ffmpeg ~options output =
     failwith "Audio codec required when channels > 0";
   let vchans = if video_codec = None then 0 else 1 in
   let dst_freq = Lazy.force ffmpeg.Ffmpeg_format.samplerate in
-  let channels_layout =
-    try Avutil.Channel_layout.get_default ffmpeg.Ffmpeg_format.channels
-    with Not_found ->
-      failwith
-        "%ffmpeg encoder: could not find a default channel configuration for \
-         this number of channels.."
-  in
   let video_width = Lazy.force Frame.video_width in
   let video_height = Lazy.force Frame.video_height in
   let audio_stream =
@@ -97,6 +90,13 @@ let mk_encoder ~ffmpeg ~options output =
         Hashtbl.iter (Hashtbl.add opts) options;
         let out_sample_format =
           Avcodec.Audio.find_best_sample_format audio_codec `Dbl
+        in
+        let channels_layout =
+          try Avutil.Channel_layout.get_default ffmpeg.Ffmpeg_format.channels
+          with Not_found ->
+            failwith
+              "%ffmpeg encoder: could not find a default channel configuration \
+               for this number of channels.."
         in
         let resampler =
           Resampler.create ~out_sample_format channels_layout src_freq

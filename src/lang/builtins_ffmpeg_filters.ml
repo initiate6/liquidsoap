@@ -150,8 +150,20 @@ let abuffer_args channels =
     `Pair ("sample_fmt", `Int (Avutil.Sample_format.get_id `Dbl));
   ]
 
+let buffer_args () =
+  let frame_rate = Frame.video_of_seconds 1. in
+  let width = Lazy.force Frame.video_width in
+  let height = Lazy.force Frame.video_height in
+  [
+    `Pair ("frame_rate", `Int frame_rate);
+    `Pair ("width", `Int width);
+    `Pair ("height", `Int height);
+    `Pair ("pix_fmt", `String "yuv420p");
+  ]
+
 let () =
   let audio_t = Lang.(source_t (kind_type_of_kind_format audio_any)) in
+  let video_t = Lang.(source_t (kind_type_of_kind_format video_only)) in
 
   add_builtin ~cat:Liq "ffmpeg.filter.audio.input"
     ~descr:"Attach an audio source to a filter's input"
@@ -185,16 +197,35 @@ let () =
       Avfilter.(Hashtbl.add graph.entries.outputs.audio name s#set_output);
       Lang.source (s :> Source.source));
 
-  let video_t = Lang.(source_t (kind_type_of_kind_format video_only)) in
   add_builtin ~cat:Liq "ffmpeg.filter.video.input"
     ~descr:"Attach a video source to a filter's input"
-    [("", Graph.t, None, None); ("", video_t, None, None)] Video.t (fun _ ->
-      assert false);
+    [("", Graph.t, None, None); ("", video_t, None, None)] Video.t (fun p ->
+      let graph = Graph.of_value (Lang.assoc "" 1 p) in
+      let source_val = Lang.assoc "" 2 p in
+      let name = uniq_name "buffer" in
+      let buffer = get_filter ~source:Avfilter.buffers "buffer" in
+      let args = buffer_args () in
+      let buffer = Avfilter.attach ~args ~name buffer graph.config in
+      let s = Ffmpeg_filter_io.(new video_output ~name source_val) in
+      Avfilter.(Hashtbl.add graph.entries.inputs.video name s#set_input);
+      Video.to_value (`Output (List.hd Avfilter.(buffer.io.outputs.video))));
 
   add_builtin ~cat:Liq "ffmpeg.filter.video.output"
     ~descr:"Return a video source from a filter's output"
-    [("", Graph.t, None, None); ("", Video.t, None, None)] video_t (fun _ ->
-      assert false)
+    [("", Graph.t, None, None); ("", Video.t, None, None)] video_t (fun p ->
+      let graph = Graph.of_value (Lang.assoc "" 1 p) in
+      let pad =
+        match Video.of_value (Lang.assoc "" 2 p) with
+          | `Output p -> p
+          | _ -> assert false
+      in
+      let name = uniq_name "buffersink" in
+      let buffersink = get_filter ~source:Avfilter.sinks "buffersink" in
+      let buffersink = Avfilter.attach ~name buffersink graph.config in
+      Avfilter.(link pad (List.hd buffersink.io.inputs.video));
+      let s = new Ffmpeg_filter_io.video_input () in
+      Avfilter.(Hashtbl.add graph.entries.outputs.video name s#set_output);
+      Lang.source (s :> Source.source))
 
 let () =
   add_builtin "ffmpeg.filter.create" ~cat:Liq
@@ -226,8 +257,20 @@ let () =
           filter.inputs.audio);
       Avfilter.(
         List.iter
+          (fun (name, input) ->
+            let set_input = Hashtbl.find graph.entries.inputs.video name in
+            set_input input)
+          filter.inputs.video);
+      Avfilter.(
+        List.iter
           (fun (name, output) ->
             let set_output = Hashtbl.find graph.entries.outputs.audio name in
             set_output output)
           filter.outputs.audio);
+      Avfilter.(
+        List.iter
+          (fun (name, output) ->
+            let set_output = Hashtbl.find graph.entries.outputs.video name in
+            set_output output)
+          filter.outputs.video);
       Lang.unit)
