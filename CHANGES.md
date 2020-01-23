@@ -14,6 +14,7 @@ New:
 - Use a pager to display long help results (#1017).
 - Added `list.init`.
 - Added `list.ind`.
+- Added `list.index`.
 - Added `request.id`.
 - Added a profiler for the language. It can be enabled with `profiler.enable` and
   the results are obtained with `profiler.stats.string` (#1027).
@@ -67,6 +68,12 @@ Fixed:
 - Fix opam install error with some bash-completion configuration (#980).
 - Make `blank()` source unavailable past is expected duration (#668).
 - Fixed implementation details with `cross` operator.
+
+1.4.1 (18-02-2020)
+=====
+
+Fixed:
+- Fixed `fade.final` and `fade.initial` (#1009)
 
 1.4.0 (29-09-2019)
 =====
